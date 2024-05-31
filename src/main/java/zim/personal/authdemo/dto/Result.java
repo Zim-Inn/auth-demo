@@ -6,7 +6,6 @@ import zim.personal.authdemo.constant.ResponseCode;
 import zim.personal.authdemo.util.ValuePicker;
 
 import java.util.HashMap;
-import java.util.Objects;
 
 @Getter
 public class Result<T> {

@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * {@link zim.personal.userauthdemo.aspect.annotation.AuthInfo}
+ * {@link zim.personal.authdemo.aspect.annotation.AuthInfo}
  * define the func that to get in-touching resource list from request param
  */
 @Getter
