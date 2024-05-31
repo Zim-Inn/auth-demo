@@ -21,6 +21,7 @@ import zim.personal.authdemo.exception.CustomRuntimeException;
 import zim.personal.authdemo.util.Base64Util;
 import zim.personal.authdemo.util.CheckBlankUtil;
 import zim.personal.authdemo.util.JsonUtil;
+import zim.personal.authdemo.util.UserDataDao;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -30,8 +31,13 @@ import java.util.Optional;
 @Component
 @Slf4j
 public class AuthAspect {
+    private final UserDataDao userDataDao;
 
-    @Pointcut("execution(* zim.personal.authdemo.*.controller..*(..))")
+    public AuthAspect(UserDataDao userDataDao) {
+        this.userDataDao = userDataDao;
+    }
+
+    @Pointcut("@annotation(zim.personal.authdemo.aspect.annotation.AuthInfo)")
     private void requestAuthIntercept() {
     }
 
@@ -50,7 +56,7 @@ public class AuthAspect {
     }
 
     // it can be also expand to check other resources
-    private static void authing(Method method, Object[] param) throws JsonProcessingException {
+    private void authing(Method method, Object[] param) throws JsonProcessingException {
         AuthInfo authInfo = method.getAnnotation(AuthInfo.class);
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         User user;
@@ -65,17 +71,27 @@ public class AuthAspect {
         } else {
             throw new CustomRuntimeException("couldn't find auth in header", ResponseCode.INVALID_REQUEST);
         }
+        User latest;
         switch (authInfo.type()) {
             case JUST_PASS:
                 return;
             case ONLY_ADMIN:
-                if ("admin".equals(user.getRole())) {
-                    return;
+                // query for whole and latest data
+                latest = userDataDao.getUserById(user.getUserId());
+                if (latest == null) {
+                    throw new CustomRuntimeException("Invalid user token!", ResponseCode.INVALID_USER_TOKEN);
                 }
-                throw new CustomRuntimeException("couldn't find auth in header", ResponseCode.REQUIRE_ADMIN);
-
+                if (!"admin".equals(latest.getRole())) {
+                    throw new CustomRuntimeException("This interface is admin-only-callable", ResponseCode.REQUIRE_ADMIN);
+                }
+                return;
             case COMMON_USER:
-                List<String> availableEndpoints = user.getEndpoint();
+                latest = userDataDao.getUserById(user.getUserId());
+                if (latest == null) {
+                    log.warn("Found a request that exceed his authority! The request userInfo: {}. But there is no such user exist now", user);
+                    throw new CustomRuntimeException("Invalid user token!", ResponseCode.INVALID_USER_TOKEN);
+                }
+                List<String> availableEndpoints = latest.getEndpoint();
                 if (availableEndpoints != null && !availableEndpoints.isEmpty()) {
                     List<String> requestEndpoints = authInfo.funcToResourcesList().getFunc().apply(param);
                     if (requestEndpoints == null) {
@@ -84,9 +100,12 @@ public class AuthAspect {
                     }
                     Optional<String> beyondEndpoints = requestEndpoints.stream().filter(l -> !availableEndpoints.contains(l)).findAny();
                     if (beyondEndpoints.isPresent()) {
-                        log.warn("Found a request that exceed his authority! The userInfo is {}, and its request endpoints are {}", user, requestEndpoints);
-                        throw new CustomRuntimeException("You have no access for :" + beyondEndpoints.get(), ResponseCode.NO_ACCESS_FOR_RESOURCE);
+                        log.warn("Found a request that exceed his authority! The latest userInfo is {}, and its request endpoints are {}", latest, requestEndpoints);
+                        throw new CustomRuntimeException("You have no access for : " + beyondEndpoints.get(), ResponseCode.NO_ACCESS_FOR_RESOURCE);
                     }
+                } else {
+                    log.warn("Found a request that exceed his authority! The latest userInfo is {}", latest);
+                    throw new CustomRuntimeException("You have no access for any resource! Please contact your admin", ResponseCode.NO_ACCESS_FOR_RESOURCE);
                 }
         }
     }

@@ -26,14 +26,4 @@ public class Base64Util {
         return new String(decodedBytes, StandardCharsets.UTF_8);
     }
 
-    // 测试Base64编码和解码
-    public static void main(String[] args) {
-        String originalData = "Hello, World!";
-        String encodedData = encode(originalData);
-        String decodedData = decode(encodedData);
-
-        System.out.println("Original Data: " + originalData);
-        System.out.println("Encoded Data: " + encodedData);
-        System.out.println("Decoded Data: " + decodedData);
-    }
 }

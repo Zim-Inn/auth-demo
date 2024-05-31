@@ -3,6 +3,7 @@ package zim.personal.authdemo.dto;
 
 import lombok.Getter;
 import zim.personal.authdemo.constant.ResponseCode;
+import zim.personal.authdemo.util.ValuePicker;
 
 import java.util.HashMap;
 import java.util.Objects;
@@ -19,7 +20,7 @@ public class Result<T> {
     private Result(ResponseCode code, String responseMsg, Object data) {
         this.responseCode = code.getCodePrefix() + "_" + code.getCode();
         this.responseMsg = responseMsg;
-        this.responseData = Objects.requireNonNullElseGet(data, HashMap::new);
+        this.responseData = ValuePicker.pickOrLazyDef(data, HashMap::new);
     }
 
 

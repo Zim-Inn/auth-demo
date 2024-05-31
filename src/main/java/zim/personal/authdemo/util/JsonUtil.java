@@ -46,18 +46,5 @@ public class JsonUtil {
         return objectMapper.readValue(json, valueTypeRef);
     }
 
-    // 测试JSON序列化和反序列化
-    public static void main(String[] args) {
-        User person = new User();
-        try {
-            String jsonString = serialize(person);
-            System.out.println("Serialized JSON: " + jsonString);
-
-            User deserializedUser = deserialize(jsonString, User.class);
-            System.out.println("Deserialized Person: " + deserializedUser);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-        }
-    }
 }
 

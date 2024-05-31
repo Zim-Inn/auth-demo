@@ -8,7 +8,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A utility class for reading files from the resources directory.
@@ -17,6 +18,8 @@ import java.nio.file.StandardOpenOption;
 public class ResourceFileOperator {
 
     private final File resource;
+
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
 
     /**
@@ -34,6 +37,7 @@ public class ResourceFileOperator {
      * @return the content of the file as a String
      */
     public String readFileFromResources() {
+        readWriteLock.readLock().lock();
         try {
             if (!resource.exists()) {
                 throw new CustomRuntimeException("File not found: " + resource.getAbsoluteFile(), ResponseCode.FILE_ERROR);
@@ -44,6 +48,8 @@ public class ResourceFileOperator {
             return Files.readString(resource.toPath(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new CustomRuntimeException("read file error!", ResponseCode.FILE_ERROR);
+        } finally {
+            readWriteLock.readLock().unlock();
         }
     }
 
@@ -51,18 +57,22 @@ public class ResourceFileOperator {
      * @param content the content would be overwritten to the old file
      */
     public void writeResourceFile(String content) {
-        try {
-            Files.writeString(resource.toPath(), content, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
-        } catch (IOException e) {
-            throw new CustomRuntimeException("write file error!", ResponseCode.FILE_ERROR);
-        }
+        writeResourceFile(content, () -> {});
     }
 
-    // Example usage
-    public static void main(String[] args) {
-        ResourceFileOperator reader = new ResourceFileOperator("src/main/resource/data/userData.json"); // Replace with actual ResourceLoader
-        String content = reader.readFileFromResources();
-        System.out.println(content);
+    /**
+     * @param content the content would be overwritten to the old file
+     */
+    public void writeResourceFile(String content, Runnable rollBack) {
+        readWriteLock.writeLock().lock();
+        try {
+            Files.writeString(resource.toPath(), content);
+        } catch (IOException e) {
+            rollBack.run();
+            throw new CustomRuntimeException("write file error!", ResponseCode.FILE_ERROR);
+        } finally {
+            readWriteLock.writeLock().unlock();
+        }
     }
 }
 
