@@ -18,6 +18,7 @@ import zim.personal.authdemo.constant.ResponseCode;
 import zim.personal.authdemo.domain.User;
 import zim.personal.authdemo.exception.CustomRuntimeException;
 
+import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -43,7 +44,7 @@ public class UserDataDao implements ApplicationContextAware, ApplicationRunner, 
     private static final String DEFAULT_USER_STR = "{\"-3154\":{\"userId\":-3154,\"role\":\"admin\",\"accountName\":\"zim\",\"endpoint\":[]}}";
 
 
-    public UserDataDao(DataProperties properties) {
+    public UserDataDao(DataProperties properties) throws IOException {
         String path;
         if (!CheckBlankUtil.isBlank(properties.getUser())) {
             path = properties.getUser();
@@ -51,7 +52,7 @@ public class UserDataDao implements ApplicationContextAware, ApplicationRunner, 
         } else {
             this.operator = new ResourceFileOperator(DATA_DIR + FileSystems.getDefault().getSeparator() + USER_DATA);
         }
-        if (!this.operator.getResource().exists() || getALlUserData().isEmpty()) {
+        if (getALlUserData().isEmpty()) {
             // write a default admin user.
             // set its userId as -3154 so that ensure external attackers can't hit the default id
             // and other users' id will start from 1 and auto increase.
@@ -63,6 +64,9 @@ public class UserDataDao implements ApplicationContextAware, ApplicationRunner, 
     private ConcurrentSkipListMap<String, User> getALlUserData() {
         try {
             String content = operator.readFileFromResources();
+            if (CheckBlankUtil.isBlank(content)) {
+                return new ConcurrentSkipListMap<>();
+            }
             return JsonUtil.deserialize(content, new TypeReference<>() {
             });
         } catch (JsonProcessingException e) {

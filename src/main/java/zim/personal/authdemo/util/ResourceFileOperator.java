@@ -27,8 +27,13 @@ public class ResourceFileOperator {
      *
      * @param filePath the file path of the file to read
      */
-    public ResourceFileOperator(String filePath) {
+    public ResourceFileOperator(String filePath) throws IOException {
         this.resource = new File(filePath);
+        if (!this.resource.exists()){
+            resource.getParentFile().mkdirs();
+            resource.createNewFile();
+        }
+
     }
 
     /**
